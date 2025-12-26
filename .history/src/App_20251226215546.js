@@ -20,15 +20,6 @@ function App() {
     });
   };
 
-  const handleLeaveRoom = () => {
-    setGameState({
-      inGame: false,
-      roomId: null,
-      playerId: null,
-      playerRole: null,
-    });
-  };
-
   return (
     <div className="App">
       {!gameState.inGame ? (
@@ -38,7 +29,6 @@ function App() {
           roomId={gameState.roomId}
           playerId={gameState.playerId}
           playerRole={gameState.playerRole}
-          onLeaveRoom={handleLeaveRoom}
         />
       )}
     </div>

@@ -1,14 +1,14 @@
-import { useState } from "react";
-import "./App.css";
-import GameScreen from "./component/GameScreen";
-import Lobby from "./component/Lobby";
+import { useState } from 'react';
+import './App.css';
+import Lobby from './component/Lobby';
+import GameScreen from './component/GameScreen';
 
 function App() {
   const [gameState, setGameState] = useState({
     inGame: false,
     roomId: null,
     playerId: null,
-    playerRole: null,
+    playerRole: null
   });
 
   const handleJoinGame = (roomId, playerId, playerRole) => {
@@ -16,16 +16,7 @@ function App() {
       inGame: true,
       roomId,
       playerId,
-      playerRole,
-    });
-  };
-
-  const handleLeaveRoom = () => {
-    setGameState({
-      inGame: false,
-      roomId: null,
-      playerId: null,
-      playerRole: null,
+      playerRole
     });
   };
 
@@ -34,11 +25,10 @@ function App() {
       {!gameState.inGame ? (
         <Lobby onJoinGame={handleJoinGame} />
       ) : (
-        <GameScreen
+        <GameScreen 
           roomId={gameState.roomId}
           playerId={gameState.playerId}
           playerRole={gameState.playerRole}
-          onLeaveRoom={handleLeaveRoom}
         />
       )}
     </div>
