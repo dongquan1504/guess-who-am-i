@@ -1,5 +1,6 @@
 import { get, ref, set, update } from "firebase/database";
 import { useState } from "react";
+import Swal from "sweetalert2";
 import { CHARACTERS } from "../data/character"; // Danh sách 25 nhân vật đã tạo ở bước trước
 import { db } from "../firebase";
 import { useGameSounds } from "../hooks/useGameSounds";
@@ -10,7 +11,15 @@ const Lobby = ({ onJoinGame }) => {
   const { playButton } = useGameSounds();
 
   const handleJoinOrCreate = async () => {
-    if (!roomIdInput.trim()) return alert("Vui lòng nhập mã phòng!");
+    if (!roomIdInput.trim()) {
+      Swal.fire({
+        icon: "warning",
+        title: "Thiếu thông tin!",
+        text: "Vui lòng nhập mã phòng!",
+        confirmButtonColor: "#3b82f6",
+      });
+      return;
+    }
 
     playButton(); // Phát âm thanh khi click nút
     setLoading(true);
@@ -31,7 +40,12 @@ const Lobby = ({ onJoinGame }) => {
           gameData.player2?.id && gameData.player2.id !== "";
 
         if (player1Exists && player2Exists) {
-          alert("Phòng này đã đủ 2 người rồi!");
+          Swal.fire({
+            icon: "info",
+            title: "Phòng đầy!",
+            text: "Phòng này đã đủ 2 người rồi!",
+            confirmButtonColor: "#3b82f6",
+          });
           setLoading(false);
           return;
         }
@@ -76,6 +90,7 @@ const Lobby = ({ onJoinGame }) => {
 
         const newGame = {
           roomID: roomIdInput,
+          createdAt: Date.now(), // Timestamp tạo phòng
           player1: {
             id: p1Id,
             targetCharacter: p1Target,
@@ -95,7 +110,12 @@ const Lobby = ({ onJoinGame }) => {
       }
     } catch (error) {
       console.error("Lỗi khi xử lý phòng:", error);
-      alert("Có lỗi xảy ra! Vui lòng thử lại.");
+      Swal.fire({
+        icon: "error",
+        title: "Lỗi!",
+        text: "Có lỗi xảy ra! Vui lòng thử lại.",
+        confirmButtonColor: "#3b82f6",
+      });
     }
 
     setLoading(false);

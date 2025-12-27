@@ -1,5 +1,6 @@
 import { get, onValue, ref, remove, update } from "firebase/database";
 import { useEffect, useState } from "react";
+import Swal from "sweetalert2";
 import { CHARACTERS } from "../data/character";
 import { db } from "../firebase";
 import { useGameSounds } from "../hooks/useGameSounds";
@@ -10,7 +11,8 @@ const GameScreen = ({ roomId, playerId, playerRole, onLeaveRoom }) => {
   const [targetCharacter, setTargetCharacter] = useState(null);
   const [shuffledCharacters, setShuffledCharacters] = useState([]);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [longPressTimer, setLongPressTimer] = useState(null);
+  const [clickCounts, setClickCounts] = useState({}); // Đếm số lần click cho mỗi nhân vật
+  const [clickTimers, setClickTimers] = useState({}); // Timer cho mỗi nhân vật
   const [previousStatus, setPreviousStatus] = useState(null);
   const [isLeavingRoom, setIsLeavingRoom] = useState(false);
   const { playClick, playVictory, playDefeat } = useGameSounds();
@@ -58,7 +60,12 @@ const GameScreen = ({ roomId, playerId, playerRole, onLeaveRoom }) => {
               clearInterval(checkInterval);
               playDefeat(); // Phát âm thanh thua
               setTimeout(() => {
-                alert("😢 Đối thủ đã đoán đúng trước bạn! Bạn thua!");
+                Swal.fire({
+                  icon: "error",
+                  title: "Bạn thua!",
+                  text: "😢 Đối thủ đã đoán đúng trước bạn!",
+                  confirmButtonColor: "#3b82f6",
+                });
               }, 100);
             }
           }
@@ -97,9 +104,12 @@ const GameScreen = ({ roomId, playerId, playerRole, onLeaveRoom }) => {
 
         // Thông báo người chơi đã thoát (chỉ khi không phải tự thoát)
         if (!isLeavingRoom) {
-          alert(
-            "⚠️ Người chơi đã thoát khỏi phòng. Đang chờ người chơi mới..."
-          );
+          Swal.fire({
+            icon: "warning",
+            title: "Người chơi đã thoát!",
+            text: "Đang chờ người chơi mới...",
+            confirmButtonColor: "#3b82f6",
+          });
         }
       }
 
@@ -130,10 +140,18 @@ const GameScreen = ({ roomId, playerId, playerRole, onLeaveRoom }) => {
   }, [gameData, roomId, onLeaveRoom]);
 
   const handleLeaveRoom = async () => {
-    const confirmLeave = window.confirm(
-      "Bạn có chắc muốn thoát khỏi phòng? Game sẽ kết thúc."
-    );
-    if (!confirmLeave) return;
+    const result = await Swal.fire({
+      icon: "warning",
+      title: "Thoát phòng?",
+      text: "Bạn có chắc muốn thoát khỏi phòng? Game sẽ kết thúc.",
+      showCancelButton: true,
+      confirmButtonText: "Thoát",
+      cancelButtonText: "Hủy",
+      confirmButtonColor: "#ef4444",
+      cancelButtonColor: "#6b7280",
+    });
+
+    if (!result.isConfirmed) return;
 
     // Đánh dấu đang thoát phòng để không hiển thị thông báo
     setIsLeavingRoom(true);
@@ -172,13 +190,41 @@ const GameScreen = ({ roomId, playerId, playerRole, onLeaveRoom }) => {
       onLeaveRoom();
     } catch (error) {
       console.error("Lỗi khi thoát phòng:", error);
-      alert("Có lỗi xảy ra khi thoát phòng!");
+      Swal.fire({
+        icon: "error",
+        title: "Lỗi!",
+        text: "Có lỗi xảy ra khi thoát phòng!",
+        confirmButtonColor: "#3b82f6",
+      });
     }
   };
 
   const handleCharacterClick = async (characterId) => {
     // Chỉ cho phép click khi đang playing
     if (gameData.winner || gameData.status !== "playing") return;
+
+    // Đếm số lần click liên tục
+    const currentCount = (clickCounts[characterId] || 0) + 1;
+    setClickCounts((prev) => ({ ...prev, [characterId]: currentCount }));
+
+    // Xóa timer cũ nếu có
+    if (clickTimers[characterId]) {
+      clearTimeout(clickTimers[characterId]);
+    }
+
+    // Nếu đã click 3 lần -> Chọn nhanh
+    if (currentCount === 3) {
+      setClickCounts((prev) => ({ ...prev, [characterId]: 0 }));
+      handleQuickSelect(characterId);
+      return;
+    }
+
+    // Set timer để reset count sau 1.5 giây
+    const timer = setTimeout(() => {
+      setClickCounts((prev) => ({ ...prev, [characterId]: 0 }));
+    }, 1000);
+
+    setClickTimers((prev) => ({ ...prev, [characterId]: timer }));
 
     playClick(); // Phát âm thanh click
 
@@ -204,6 +250,34 @@ const GameScreen = ({ roomId, playerId, playerRole, onLeaveRoom }) => {
   const handleQuickSelect = async (characterId) => {
     if (gameData.winner || gameData.status !== "playing") return;
 
+    // Tìm nhân vật được chọn
+    const selectedCharacter = shuffledCharacters.find(
+      (char) => char.id === characterId
+    );
+
+    // Hiển thị confirm dialog với hình ảnh nhân vật
+    const result = await Swal.fire({
+      title: "Chọn nhanh nhân vật?",
+      html: `
+        <div style="text-align: center;">
+          <img src="${selectedCharacter.image}" 
+               alt="${selectedCharacter.name}" 
+               style="width: 150px; height: 150px; border-radius: 50%; object-fit: cover; margin: 20px auto; border: 4px solid #8b5cf6;" />
+          <p style="font-size: 18px; font-weight: bold; margin: 10px 0;">${selectedCharacter.name}</p>
+          <p style="color: #ef4444; font-weight: bold;">Bạn chắc chắn muốn đoán nhân vật này?</p>
+          <p style="font-size: 14px; color: #6b7280;">Hành động này sẽ loại bỏ tất cả nhân vật khác và kiểm tra kết quả ngay!</p>
+        </div>
+      `,
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonText: "Đoán nhân vật này!",
+      cancelButtonText: "Hủy",
+      confirmButtonColor: "#8b5cf6",
+      cancelButtonColor: "#6b7280",
+    });
+
+    if (!result.isConfirmed) return;
+
     // Loại tất cả nhân vật TRỪ nhân vật được chọn
     const allOtherCharacters = shuffledCharacters
       .filter((char) => char.id !== characterId)
@@ -221,26 +295,7 @@ const GameScreen = ({ roomId, playerId, playerRole, onLeaveRoom }) => {
     checkWinCondition(allOtherCharacters);
   };
 
-  // Xử lý khi bắt đầu nhấn giữ
-  const handleMouseDown = (characterId) => {
-    if (gameData.winner || gameData.status !== "playing") return;
-
-    const timer = setTimeout(() => {
-      handleQuickSelect(characterId);
-    }, 2000); // 2 giây
-
-    setLongPressTimer(timer);
-  };
-
-  // Xử lý khi thả chuột hoặc rời khỏi vùng nhân vật
-  const handleMouseUp = () => {
-    if (longPressTimer) {
-      clearTimeout(longPressTimer);
-      setLongPressTimer(null);
-    }
-  };
-
-  // Xử lý click chuột phải
+  // Xử lý click chuột phải (giữ nguyên để hỗ trợ desktop)
   const handleContextMenu = (e, characterId) => {
     e.preventDefault(); // Ngăn menu chuột phải mặc định
     if (gameData.winner || gameData.status !== "playing") return;
@@ -273,9 +328,22 @@ const GameScreen = ({ roomId, playerId, playerRole, onLeaveRoom }) => {
       playVictory(); // Phát âm thanh chiến thắng sau khi update
 
       setTimeout(() => {
-        alert(
-          `🎉 Chúc mừng! Bạn đã đoán đúng! Nhân vật của đối thủ là ${opponentTarget.name}!`
-        );
+        Swal.fire({
+          icon: "success",
+          title: "🎉 Chúc mừng!",
+          html: `
+            <div style="text-align: center;">
+              <p style="font-size: 18px; margin-bottom: 20px;">Bạn đã đoán đúng!</p>
+              <img src="${opponentTarget.image}" 
+                   alt="${opponentTarget.name}" 
+                   style="width: 200px; height: 200px; border-radius: 50%; object-fit: cover; margin: 20px auto; border: 5px solid #10b981;" />
+              <p style="font-size: 20px; font-weight: bold; color: #10b981; margin-top: 15px;">${opponentTarget.name}</p>
+              <p style="font-size: 16px; color: #6b7280; margin-top: 10px;">Nhân vật của đối thủ</p>
+            </div>
+          `,
+          confirmButtonColor: "#10b981",
+          confirmButtonText: "Tuyệt vời!",
+        });
       }, 800);
     } else {
       // THUA! - Đoán sai nhân vật của đối thủ
@@ -289,9 +357,23 @@ const GameScreen = ({ roomId, playerId, playerRole, onLeaveRoom }) => {
       playDefeat(); // Phát âm thanh thua cuộc sau khi update
 
       setTimeout(() => {
-        alert(
-          `❌ Rất tiếc! Bạn đã đoán sai! Nhân vật của đối thủ là ${opponentTarget.name}, không phải ${remainingCharacter.name}.`
-        );
+        Swal.fire({
+          icon: "error",
+          title: "❌ Rất tiếc!",
+          html: `
+            <div style="text-align: center;">
+              <p style="font-size: 18px; margin-bottom: 20px;">Bạn đã đoán sai!</p>
+              <p style="font-size: 16px; color: #6b7280; margin-bottom: 15px;">Bạn đoán: <strong>${remainingCharacter.name}</strong></p>
+              <img src="${opponentTarget.image}" 
+                   alt="${opponentTarget.name}" 
+                   style="width: 200px; height: 200px; border-radius: 50%; object-fit: cover; margin: 20px auto; border: 5px solid #ef4444;" />
+              <p style="font-size: 20px; font-weight: bold; color: #ef4444; margin-top: 15px;">${opponentTarget.name}</p>
+              <p style="font-size: 16px; color: #6b7280; margin-top: 10px;">Mới là nhân vật của đối thủ</p>
+            </div>
+          `,
+          confirmButtonColor: "#ef4444",
+          confirmButtonText: "Thử lại lần sau",
+        });
       }, 800);
     }
   };
@@ -429,11 +511,6 @@ const GameScreen = ({ roomId, playerId, playerRole, onLeaveRoom }) => {
                     onClick={() =>
                       !gameData.winner && handleCharacterClick(character.id)
                     }
-                    onMouseDown={() => handleMouseDown(character.id)}
-                    onMouseUp={handleMouseUp}
-                    onMouseLeave={handleMouseUp}
-                    onTouchStart={() => handleMouseDown(character.id)}
-                    onTouchEnd={handleMouseUp}
                     onContextMenu={(e) => handleContextMenu(e, character.id)}
                     className={`transition-all duration-300 transform ${
                       !gameData.winner && gameData.status === "playing"
@@ -468,7 +545,7 @@ const GameScreen = ({ roomId, playerId, playerRole, onLeaveRoom }) => {
             💡 <strong>Cách chơi:</strong> Click vào nhân vật để loại bỏ (làm
             mờ). Click lần 2 để hiện lại.{" "}
             <strong className="text-red-700">
-              Nhấn giữ 2s hoặc click chuột phải
+              Click nhanh 3 lần hoặc click chuột phải
             </strong>{" "}
             vào nhân vật để chọn nhanh (đoán luôn nhân vật đó). Hãy đặt câu hỏi
             và loại trừ các nhân vật cho đến khi đoán ra nhân vật của đối thủ!
