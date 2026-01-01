@@ -55,25 +55,19 @@ const Lobby = ({ onJoinGame }) => {
 
         // Vào vị trí còn trống
         if (!player1Exists) {
-          // Vào với tư cách Player 1 - Random nhân vật mới
-          const shuffled = [...CHARACTERS].sort(() => 0.5 - Math.random());
-          const newP1Target = shuffled[0];
-
+          // Vào với tư cách Player 1 - CHỈ set ID, KHÔNG random lại targetCharacter
+          // (vì targetCharacter đã được tạo sẵn khi tạo phòng)
           await update(roomRef, {
             "player1/id": newPlayerId,
-            "player1/targetCharacter": newP1Target,
             "player1/eliminated": [],
             status: player2Exists ? "playing" : "waiting",
           });
           onJoinGame(roomIdInput, newPlayerId, "player1");
         } else if (!player2Exists) {
-          // Vào với tư cách Player 2 - Random nhân vật mới
-          const shuffled = [...CHARACTERS].sort(() => 0.5 - Math.random());
-          const newP2Target = shuffled[0];
-
+          // Vào với tư cách Player 2 - CHỈ set ID, KHÔNG random lại targetCharacter
+          // (vì targetCharacter đã được tạo sẵn khi tạo phòng)
           await update(roomRef, {
             "player2/id": newPlayerId,
-            "player2/targetCharacter": newP2Target,
             "player2/eliminated": [],
             status: "playing", // Khi p2 vào thì bắt đầu chơi
           });
