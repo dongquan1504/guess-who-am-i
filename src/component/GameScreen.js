@@ -1,7 +1,6 @@
 import { get, onValue, ref, remove, update } from "firebase/database";
 import { useEffect, useState } from "react";
 import Swal from "sweetalert2";
-import { CHARACTERS } from "../data/character";
 import { db } from "../firebase";
 import { useGameSounds } from "../hooks/useGameSounds";
 
@@ -138,15 +137,20 @@ const GameScreen = ({ roomId, playerId, playerRole, onLeaveRoom }) => {
 
   // Xáo trộn 24 nhân vật chỉ 1 lần khi mới vào phòng
   useEffect(() => {
-    if (targetCharacter && shuffledCharacters.length === 0) {
-      const availableChars = CHARACTERS.filter(
+    if (targetCharacter && shuffledCharacters.length === 0 && gameData) {
+      // Lấy danh sách 25 nhân vật từ Firebase (đã được tạo khi tạo phòng)
+      const roomCharacters = gameData.characters || [];
+
+      // Lọc bỏ nhân vật target của mình, còn lại 24 nhân vật
+      const availableChars = roomCharacters.filter(
         (char) => char.id !== targetCharacter.id
       );
-      // Xáo trộn mảng
+
+      // Xáo trộn mảng 24 nhân vật
       const shuffled = [...availableChars].sort(() => Math.random() - 0.5);
-      setShuffledCharacters(shuffled.slice(0, 24));
+      setShuffledCharacters(shuffled);
     }
-  }, [targetCharacter, shuffledCharacters.length]);
+  }, [targetCharacter, shuffledCharacters.length, gameData]);
 
   // Theo dõi thay đổi status và reset eliminated khi chuyển về waiting
   useEffect(() => {

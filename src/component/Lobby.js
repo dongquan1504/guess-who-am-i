@@ -77,14 +77,18 @@ const Lobby = ({ onJoinGame }) => {
         // TRƯỜNG HỢP: Phòng chưa có -> Tạo mới và là Player 1
         const p1Id = "user_" + Math.random().toString(36).substring(7);
 
-        // Random 2 nhân vật khác nhau từ danh sách 25 người
-        const shuffled = [...CHARACTERS].sort(() => 0.5 - Math.random());
-        const p1Target = shuffled[0]; // Nhân vật P2 phải đoán
-        const p2Target = shuffled[1]; // Nhân vật P1 phải đoán
+        // Random 25 nhân vật từ danh sách 51 nhân vật
+        const shuffledAll = [...CHARACTERS].sort(() => 0.5 - Math.random());
+        const selected25Characters = shuffledAll.slice(0, 25); // Lấy 25 nhân vật đầu tiên
+
+        // Random 2 nhân vật khác nhau từ 25 nhân vật đã chọn
+        const p1Target = selected25Characters[0]; // Nhân vật P2 phải đoán
+        const p2Target = selected25Characters[1]; // Nhân vật P1 phải đoán
 
         const newGame = {
           roomID: roomIdInput,
           createdAt: Date.now(), // Timestamp tạo phòng
+          characters: selected25Characters, // Lưu danh sách 25 nhân vật để cả 2 player dùng chung
           player1: {
             id: p1Id,
             targetCharacter: p1Target,
