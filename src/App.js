@@ -13,7 +13,7 @@ function App() {
     playerRole: null,
   });
 
-  // Cleanup các phòng cũ (>24h) khi vào web lần đầu
+  // Cleanup các phòng cũ (>10m) khi vào web lần đầu
   useEffect(() => {
     const cleanupOldRooms = async () => {
       try {
@@ -23,28 +23,28 @@ function App() {
         if (snapshot.exists()) {
           const rooms = snapshot.val();
           const now = Date.now();
-          const oneDayInMs = 24 * 60 * 60 * 1000; // 24 giờ
+          const tenMinutesInMs = 10 * 60 * 1000; // 10 phút
 
           for (const roomId in rooms) {
             const room = rooms[roomId];
 
-            // Kiểm tra nếu phòng có timestamp hoặc tạo timestamp từ dữ liệu hiện có
+            // Kiểm tra nếu phòng có lastUpdate
             let roomAge = 0;
 
-            // Nếu không có createdAt, coi như phòng đã cũ và xóa
-            if (!room.createdAt) {
+            // Nếu không có lastUpdate, coi như phòng đã cũ và xóa
+            if (!room.lastUpdate) {
               // Xóa phòng không có timestamp (phòng cũ)
               const roomRef = ref(db, `roomId/${roomId}`);
               await remove(roomRef);
               console.log(`Đã xóa phòng cũ: ${roomId}`);
             } else {
-              roomAge = now - room.createdAt;
+              roomAge = now - room.lastUpdate;
 
-              // Xóa phòng nếu tồn tại quá 24 giờ
-              if (roomAge > oneDayInMs) {
+              // Xóa phòng nếu không có hoạt động quá 10 phút
+              if (roomAge > tenMinutesInMs) {
                 const roomRef = ref(db, `roomId/${roomId}`);
                 await remove(roomRef);
-                console.log(`Đã xóa phòng cũ hơn 24h: ${roomId}`);
+                console.log(`Đã xóa phòng không hoạt động hơn 10 phút: ${roomId}`);
               }
             }
           }

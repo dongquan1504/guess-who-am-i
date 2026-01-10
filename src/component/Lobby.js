@@ -61,15 +61,17 @@ const Lobby = ({ onJoinGame }) => {
             "player1/id": newPlayerId,
             "player1/eliminated": [],
             status: player2Exists ? "playing" : "waiting",
+            lastUpdate: Date.now(),
           });
           onJoinGame(roomIdInput, newPlayerId, "player1");
         } else if (!player2Exists) {
           // Vào với tư cách Player 2 - CHỈ set ID, KHÔNG random lại targetCharacter
-          // (vì targetCharacter đã được tạo sẵn khi tạo phòng)
+          // (vì targetCharacter đã được tạo sẵn khi tầo phòng)
           await update(roomRef, {
             "player2/id": newPlayerId,
             "player2/eliminated": [],
             status: "playing", // Khi p2 vào thì bắt đầu chơi
+            lastUpdate: Date.now(),
           });
           onJoinGame(roomIdInput, newPlayerId, "player2");
         }
@@ -88,6 +90,7 @@ const Lobby = ({ onJoinGame }) => {
         const newGame = {
           roomID: roomIdInput,
           createdAt: Date.now(), // Timestamp tạo phòng
+          lastUpdate: Date.now(), // Timestamp cập nhật lần cuối
           characters: selected25Characters, // Lưu danh sách 25 nhân vật để cả 2 player dùng chung
           player1: {
             id: p1Id,

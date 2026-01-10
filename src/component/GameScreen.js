@@ -55,6 +55,12 @@ const GameScreen = ({ roomId, playerId, playerRole, onLeaveRoom }) => {
         playerRole === "player1" ? gameData.player2 : gameData.player1;
       const opponentTarget = opponentPlayer?.targetCharacter;
 
+      // Tìm nhân vật mà đối thủ đã chọn (nhân vật còn lại sau khi loại)
+      const opponentEliminated = opponentPlayer?.eliminated || [];
+      const opponentChosenChar = shuffledCharacters.find(
+        (char) => !opponentEliminated.includes(char.id)
+      );
+
       setTimeout(async () => {
         // Hiển thị popup chi tiết cho người chơi bị động (thắng)
         await Swal.fire({
@@ -63,17 +69,58 @@ const GameScreen = ({ roomId, playerId, playerRole, onLeaveRoom }) => {
           html: `
             <div style="text-align: center;">
               <p style="font-size: 18px; margin-bottom: 20px;">Đối thủ đã đoán sai!</p>
-              <img src="${opponentTarget?.image}" 
-                   alt="${opponentTarget?.name}" 
+              <img src="${opponentChosenChar?.image || opponentTarget?.image}" 
+                   alt="${opponentChosenChar?.name || opponentTarget?.name}" 
                    style="width: 200px; height: 200px; border-radius: 50%; object-fit: cover; margin: 20px auto; border: 5px solid #10b981;" />
-              <p style="font-size: 20px; font-weight: bold; color: #10b981; margin-top: 15px;">${opponentTarget?.name}</p>
-              <p style="font-size: 16px; color: #6b7280; margin-top: 10px;">Nhân vật của đối thủ</p>
+              <p style="font-size: 20px; font-weight: bold; color: #10b981; margin-top: 15px;">${
+                opponentChosenChar?.name || opponentTarget?.name
+              }</p>
+              <p style="font-size: 16px; color: #6b7280; margin-top: 10px;">Nhân vật đối thủ đã chọn</p>
+              
+              <button id="toggleDetails" style="margin-top: 20px; padding: 8px 16px; border: 2px solid #6b7280; background: transparent; border-radius: 8px; cursor: pointer; font-size: 14px; color: #6b7280;">Xem thêm ▼</button>
+              
+              <div id="detailsSection" style="display: none; margin-top: 20px;">
+                <div style="display: flex; gap: 15px; justify-content: center; align-items: stretch;">
+                  <div style="flex: 1; padding: 15px; border: 3px solid #3b82f6; border-radius: 12px; background: #eff6ff; display: flex; flex-direction: column; align-items: center; min-height: 200px;">
+                    <p style="font-size: 14px; color: #6b7280; margin-bottom: 8px;">Nhân vật của bạn</p>
+                    <img src="${targetCharacter?.image}" 
+                         alt="${targetCharacter?.name}" 
+                         style="width: 120px; height: 120px; border-radius: 50%; object-fit: cover; margin: 0 auto;" />
+                    <p style="font-size: 16px; font-weight: bold; color: #3b82f6; margin-top: 8px;">${
+                      targetCharacter?.name
+                    }</p>
+                  </div>
+                  
+                  <div style="flex: 1; padding: 15px; border: 3px solid #ef4444; border-radius: 12px; background: #fef2f2; display: flex; flex-direction: column; align-items: center; min-height: 200px;">
+                    <p style="font-size: 14px; color: #6b7280; margin-bottom: 8px;">Nhân vật của đối thủ</p>
+                    <img src="${opponentTarget?.image}" 
+                         alt="${opponentTarget?.name}" 
+                         style="width: 120px; height: 120px; border-radius: 50%; object-fit: cover; margin: 0 auto;" />
+                    <p style="font-size: 16px; font-weight: bold; color: #ef4444; margin-top: 8px;">${
+                      opponentTarget?.name
+                    }</p>
+                  </div>
+                </div>
+              </div>
             </div>
           `,
           confirmButtonColor: "#10b981",
           confirmButtonText: "Tuyệt vời!",
           allowOutsideClick: false,
           allowEscapeKey: false,
+          didOpen: () => {
+            const toggleBtn = document.getElementById("toggleDetails");
+            const detailsSection = document.getElementById("detailsSection");
+            toggleBtn.addEventListener("click", () => {
+              if (detailsSection.style.display === "none") {
+                detailsSection.style.display = "block";
+                toggleBtn.textContent = "Thu gọn ▲";
+              } else {
+                detailsSection.style.display = "none";
+                toggleBtn.textContent = "Xem thêm ▼";
+              }
+            });
+          },
         });
 
         // Sau khi người chơi confirm, xóa phòng và quay về lobby
@@ -92,6 +139,16 @@ const GameScreen = ({ roomId, playerId, playerRole, onLeaveRoom }) => {
       setHasProcessedWinner(true); // Đánh dấu đã xử lý
       playDefeat(); // Phát âm thanh thua
 
+      // Lấy nhân vật của đối thủ
+      const opponentPlayer =
+        playerRole === "player1" ? gameData.player2 : gameData.player1;
+      const opponentTarget = opponentPlayer?.targetCharacter;
+
+      // Tìm nhân vật mà mình đã chọn (nếu có - nhân vật còn lại)
+      const myChosenChar = shuffledCharacters.find(
+        (char) => !eliminated.includes(char.id)
+      );
+
       setTimeout(async () => {
         // Hiển thị popup chi tiết cho người chơi bị động (thua)
         await Swal.fire({
@@ -100,17 +157,60 @@ const GameScreen = ({ roomId, playerId, playerRole, onLeaveRoom }) => {
           html: `
             <div style="text-align: center;">
               <p style="font-size: 18px; margin-bottom: 20px;">Đối thủ đã đoán đúng trước bạn!</p>
-              <img src="${targetCharacter?.image}" 
-                   alt="${targetCharacter?.name}" 
+              <img src="${myChosenChar?.image || targetCharacter?.image}" 
+                   alt="${myChosenChar?.name || targetCharacter?.name}" 
                    style="width: 200px; height: 200px; border-radius: 50%; object-fit: cover; margin: 20px auto; border: 5px solid #ef4444;" />
-              <p style="font-size: 20px; font-weight: bold; color: #ef4444; margin-top: 15px;">${targetCharacter?.name}</p>
-              <p style="font-size: 16px; color: #6b7280; margin-top: 10px;">Nhân vật của bạn</p>
+              <p style="font-size: 20px; font-weight: bold; color: #ef4444; margin-top: 15px;">${
+                myChosenChar?.name || targetCharacter?.name
+              }</p>
+              <p style="font-size: 16px; color: #6b7280; margin-top: 10px;">${
+                myChosenChar ? "Nhân vật bạn đã chọn" : "Nhân vật của bạn"
+              }</p>
+              
+              <button id="toggleDetails" style="margin-top: 20px; padding: 8px 16px; border: 2px solid #6b7280; background: transparent; border-radius: 8px; cursor: pointer; font-size: 14px; color: #6b7280;">Xem thêm ▼</button>
+              
+              <div id="detailsSection" style="display: none; margin-top: 20px;">
+                <div style="display: flex; gap: 15px; justify-content: center; align-items: stretch;">
+                  <div style="flex: 1; padding: 15px; border: 3px solid #3b82f6; border-radius: 12px; background: #eff6ff; display: flex; flex-direction: column; align-items: center; min-height: 200px;">
+                    <p style="font-size: 14px; color: #6b7280; margin-bottom: 8px;">Nhân vật của bạn</p>
+                    <img src="${targetCharacter?.image}" 
+                         alt="${targetCharacter?.name}" 
+                         style="width: 120px; height: 120px; border-radius: 50%; object-fit: cover; margin: 0 auto;" />
+                    <p style="font-size: 16px; font-weight: bold; color: #3b82f6; margin-top: 8px;">${
+                      targetCharacter?.name
+                    }</p>
+                  </div>
+                  
+                  <div style="flex: 1; padding: 15px; border: 3px solid #ef4444; border-radius: 12px; background: #fef2f2; display: flex; flex-direction: column; align-items: center; min-height: 200px;">
+                    <p style="font-size: 14px; color: #6b7280; margin-bottom: 8px;">Nhân vật của đối thủ</p>
+                    <img src="${opponentTarget?.image}" 
+                         alt="${opponentTarget?.name}" 
+                         style="width: 120px; height: 120px; border-radius: 50%; object-fit: cover; margin: 0 auto;" />
+                    <p style="font-size: 16px; font-weight: bold; color: #ef4444; margin-top: 8px;">${
+                      opponentTarget?.name
+                    }</p>
+                  </div>
+                </div>
+              </div>
             </div>
           `,
           confirmButtonColor: "#ef4444",
           confirmButtonText: "Thử lại lần sau",
           allowOutsideClick: false,
           allowEscapeKey: false,
+          didOpen: () => {
+            const toggleBtn = document.getElementById("toggleDetails");
+            const detailsSection = document.getElementById("detailsSection");
+            toggleBtn.addEventListener("click", () => {
+              if (detailsSection.style.display === "none") {
+                detailsSection.style.display = "block";
+                toggleBtn.textContent = "Thu gọn ▲";
+              } else {
+                detailsSection.style.display = "none";
+                toggleBtn.textContent = "Xem thêm ▼";
+              }
+            });
+          },
         });
 
         // Sau khi người chơi confirm, xóa phòng và quay về lobby
@@ -163,6 +263,7 @@ const GameScreen = ({ roomId, playerId, playerRole, onLeaveRoom }) => {
         const roomRef = ref(db, `roomId/${roomId}`);
         update(roomRef, {
           [`${playerRole}/eliminated`]: [],
+          lastUpdate: Date.now(),
         });
 
         // Thông báo người chơi đã thoát (chỉ khi không phải tự thoát)
@@ -218,6 +319,7 @@ const GameScreen = ({ roomId, playerId, playerRole, onLeaveRoom }) => {
             [`${playerRole}/eliminated`]: [],
             winner: null,
             status: "waiting",
+            lastUpdate: Date.now(),
           });
         }
       }
@@ -242,6 +344,17 @@ const GameScreen = ({ roomId, playerId, playerRole, onLeaveRoom }) => {
   };
 
   const handleCharacterClick = async (characterId) => {
+    // Nếu đang ở trạng thái waiting, hiển thị thông báo
+    if (gameData.status === "waiting") {
+      Swal.fire({
+        icon: "info",
+        title: "Đang đợi người chơi",
+        text: "Vui lòng đợi người chơi thứ hai tham gia!",
+        confirmButtonColor: "#3b82f6",
+      });
+      return;
+    }
+
     // Chỉ cho phép click khi đang playing
     if (gameData.winner || gameData.status !== "playing") return;
 
@@ -257,6 +370,7 @@ const GameScreen = ({ roomId, playerId, playerRole, onLeaveRoom }) => {
     const roomRef = ref(db, `roomId/${roomId}`);
     await update(roomRef, {
       [`${playerRole}/eliminated`]: newEliminated,
+      lastUpdate: Date.now(),
     });
 
     // Kiểm tra điều kiện chiến thắng: đã loại 23 nhân vật, còn 1 nhân vật
@@ -308,6 +422,7 @@ const GameScreen = ({ roomId, playerId, playerRole, onLeaveRoom }) => {
     const roomRef = ref(db, `roomId/${roomId}`);
     await update(roomRef, {
       [`${playerRole}/eliminated`]: allOtherCharacters,
+      lastUpdate: Date.now(),
     });
 
     // Kiểm tra kết quả ngay lập tức (23 nhân vật đã loại)
@@ -381,6 +496,7 @@ const GameScreen = ({ roomId, playerId, playerRole, onLeaveRoom }) => {
       await update(roomRef, {
         winner: playerRole,
         status: "finished",
+        lastUpdate: Date.now(),
       });
 
       playVictory(); // Phát âm thanh chiến thắng sau khi update
@@ -392,17 +508,52 @@ const GameScreen = ({ roomId, playerId, playerRole, onLeaveRoom }) => {
           html: `
             <div style="text-align: center;">
               <p style="font-size: 18px; margin-bottom: 20px;">Bạn đã đoán đúng!</p>
-              <img src="${opponentTarget.image}" 
-                   alt="${opponentTarget.name}" 
+              <img src="${remainingCharacter.image}" 
+                   alt="${remainingCharacter.name}" 
                    style="width: 200px; height: 200px; border-radius: 50%; object-fit: cover; margin: 20px auto; border: 5px solid #10b981;" />
-              <p style="font-size: 20px; font-weight: bold; color: #10b981; margin-top: 15px;">${opponentTarget.name}</p>
-              <p style="font-size: 16px; color: #6b7280; margin-top: 10px;">Nhân vật của đối thủ</p>
+              <p style="font-size: 20px; font-weight: bold; color: #10b981; margin-top: 15px;">${remainingCharacter.name}</p>
+              <p style="font-size: 16px; color: #6b7280; margin-top: 10px;">Nhân vật bạn đã chọn</p>
+              
+              <button id="toggleDetails" style="margin-top: 20px; padding: 8px 16px; border: 2px solid #6b7280; background: transparent; border-radius: 8px; cursor: pointer; font-size: 14px; color: #6b7280;">Xem thêm ▼</button>
+              
+              <div id="detailsSection" style="display: none; margin-top: 20px;">
+                <div style="display: flex; gap: 15px; justify-content: center; align-items: stretch;">
+                  <div style="flex: 1; padding: 15px; border: 3px solid #3b82f6; border-radius: 12px; background: #eff6ff; display: flex; flex-direction: column; align-items: center; min-height: 200px;">
+                    <p style="font-size: 14px; color: #6b7280; margin-bottom: 8px;">Nhân vật của bạn</p>
+                    <img src="${targetCharacter?.image}" 
+                         alt="${targetCharacter?.name}" 
+                         style="width: 120px; height: 120px; border-radius: 50%; object-fit: cover; margin: 0 auto;" />
+                    <p style="font-size: 16px; font-weight: bold; color: #3b82f6; margin-top: 8px;">${targetCharacter?.name}</p>
+                  </div>
+                  
+                  <div style="flex: 1; padding: 15px; border: 3px solid #ef4444; border-radius: 12px; background: #fef2f2; display: flex; flex-direction: column; align-items: center; min-height: 200px;">
+                    <p style="font-size: 14px; color: #6b7280; margin-bottom: 8px;">Nhân vật của đối thủ</p>
+                    <img src="${opponentTarget.image}" 
+                         alt="${opponentTarget.name}" 
+                         style="width: 120px; height: 120px; border-radius: 50%; object-fit: cover; margin: 0 auto;" />
+                    <p style="font-size: 16px; font-weight: bold; color: #ef4444; margin-top: 8px;">${opponentTarget.name}</p>
+                  </div>
+                </div>
+              </div>
             </div>
           `,
           confirmButtonColor: "#10b981",
           confirmButtonText: "Tuyệt vời!",
           allowOutsideClick: false,
           allowEscapeKey: false,
+          didOpen: () => {
+            const toggleBtn = document.getElementById("toggleDetails");
+            const detailsSection = document.getElementById("detailsSection");
+            toggleBtn.addEventListener("click", () => {
+              if (detailsSection.style.display === "none") {
+                detailsSection.style.display = "block";
+                toggleBtn.textContent = "Thu gọn ▲";
+              } else {
+                detailsSection.style.display = "none";
+                toggleBtn.textContent = "Xem thêm ▼";
+              }
+            });
+          },
         });
 
         // Sau khi người chơi confirm, xóa phòng và quay về lobby
@@ -422,6 +573,7 @@ const GameScreen = ({ roomId, playerId, playerRole, onLeaveRoom }) => {
       await update(roomRef, {
         winner: winner,
         status: "finished",
+        lastUpdate: Date.now(),
       });
 
       playDefeat(); // Phát âm thanh thua cuộc sau khi update
@@ -433,18 +585,52 @@ const GameScreen = ({ roomId, playerId, playerRole, onLeaveRoom }) => {
           html: `
             <div style="text-align: center;">
               <p style="font-size: 18px; margin-bottom: 20px;">Bạn đã đoán sai!</p>
-              <p style="font-size: 16px; color: #6b7280; margin-bottom: 15px;">Bạn đoán: <strong>${remainingCharacter.name}</strong></p>
-              <img src="${opponentTarget.image}" 
-                   alt="${opponentTarget.name}" 
+              <img src="${remainingCharacter.image}" 
+                   alt="${remainingCharacter.name}" 
                    style="width: 200px; height: 200px; border-radius: 50%; object-fit: cover; margin: 20px auto; border: 5px solid #ef4444;" />
-              <p style="font-size: 20px; font-weight: bold; color: #ef4444; margin-top: 15px;">${opponentTarget.name}</p>
-              <p style="font-size: 16px; color: #6b7280; margin-top: 10px;">Mới là nhân vật của đối thủ</p>
+              <p style="font-size: 20px; font-weight: bold; color: #ef4444; margin-top: 15px;">${remainingCharacter.name}</p>
+              <p style="font-size: 16px; color: #6b7280; margin-top: 10px;">Nhân vật bạn đã chọn</p>
+              
+              <button id="toggleDetails" style="margin-top: 20px; padding: 8px 16px; border: 2px solid #6b7280; background: transparent; border-radius: 8px; cursor: pointer; font-size: 14px; color: #6b7280;">Xem thêm ▼</button>
+              
+              <div id="detailsSection" style="display: none; margin-top: 20px;">
+                <div style="display: flex; gap: 15px; justify-content: center; align-items: stretch;">
+                  <div style="flex: 1; padding: 15px; border: 3px solid #3b82f6; border-radius: 12px; background: #eff6ff; display: flex; flex-direction: column; align-items: center; min-height: 200px;">
+                    <p style="font-size: 14px; color: #6b7280; margin-bottom: 8px;">Nhân vật của bạn</p>
+                    <img src="${targetCharacter?.image}" 
+                         alt="${targetCharacter?.name}" 
+                         style="width: 120px; height: 120px; border-radius: 50%; object-fit: cover; margin: 0 auto;" />
+                    <p style="font-size: 16px; font-weight: bold; color: #3b82f6; margin-top: 8px;">${targetCharacter?.name}</p>
+                  </div>
+                  
+                  <div style="flex: 1; padding: 15px; border: 3px solid #ef4444; border-radius: 12px; background: #fef2f2; display: flex; flex-direction: column; align-items: center; min-height: 200px;">
+                    <p style="font-size: 14px; color: #6b7280; margin-bottom: 8px;">Nhân vật của đối thủ</p>
+                    <img src="${opponentTarget.image}" 
+                         alt="${opponentTarget.name}" 
+                         style="width: 120px; height: 120px; border-radius: 50%; object-fit: cover; margin: 0 auto;" />
+                    <p style="font-size: 16px; font-weight: bold; color: #ef4444; margin-top: 8px;">${opponentTarget.name}</p>
+                  </div>
+                </div>
+              </div>
             </div>
           `,
           confirmButtonColor: "#ef4444",
           confirmButtonText: "Thử lại lần sau",
           allowOutsideClick: false,
           allowEscapeKey: false,
+          didOpen: () => {
+            const toggleBtn = document.getElementById("toggleDetails");
+            const detailsSection = document.getElementById("detailsSection");
+            toggleBtn.addEventListener("click", () => {
+              if (detailsSection.style.display === "none") {
+                detailsSection.style.display = "block";
+                toggleBtn.textContent = "Thu gọn ▲";
+              } else {
+                detailsSection.style.display = "none";
+                toggleBtn.textContent = "Xem thêm ▼";
+              }
+            });
+          },
         });
 
         // Sau khi người chơi confirm, xóa phòng và quay về lobby
@@ -582,6 +768,7 @@ const GameScreen = ({ roomId, playerId, playerRole, onLeaveRoom }) => {
             <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">
               {shuffledCharacters.map((character) => {
                 const isEliminated = eliminated.includes(character.id);
+                const isWaiting = gameData.status === "waiting";
                 return (
                   <div
                     key={character.id}
@@ -599,7 +786,11 @@ const GameScreen = ({ roomId, playerId, playerRole, onLeaveRoom }) => {
                       !gameData.winner && gameData.status === "playing"
                         ? "cursor-pointer hover:scale-105"
                         : "cursor-not-allowed"
-                    } ${isEliminated ? "opacity-30 grayscale" : "opacity-100"}`}
+                    } ${
+                      isEliminated || isWaiting
+                        ? "opacity-30 grayscale"
+                        : "opacity-100"
+                    }`}
                   >
                     <div className="bg-gray-50 rounded-lg p-2 shadow-md hover:shadow-xl">
                       <div className="w-full aspect-square rounded-full overflow-hidden border-2 border-gray-300 mb-2">
